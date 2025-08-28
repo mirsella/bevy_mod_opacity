@@ -17,14 +17,14 @@ Hierarchical opacity for bevy.
 keywords = ["bevy", "opacity", "fading"]
 
 [features]
-default = ["derive", "serde"]
+default = ["bevy_pbr", "derive", "serde"]
+bevy_pbr = ["bevy/bevy_pbr"]
 derive = ["bevy_mod_opacity_derive"]
 serde = ["dep:serde"]
 
 [dependencies]
 bevy = { version = "0.16.0", default-features = false, features = [
     "bevy_render", 
-    "bevy_pbr",
     "bevy_ui",
     "bevy_sprite",
 ]}

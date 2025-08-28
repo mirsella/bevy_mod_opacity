@@ -108,6 +108,7 @@ pub fn opacity(tokens: TokenStream) -> TokenStream {
 
         for ty in extends {
             result.extend(quote! {
+                #[cfg(feature = "bevy_pbr")]
                 const _: () =  {
                     impl #crate0::OpacityMaterialExtension<#ty> for #name {
                         fn apply_opacity(a: &mut #ty, b: &mut Self, opacity: f32) {
@@ -120,6 +121,7 @@ pub fn opacity(tokens: TokenStream) -> TokenStream {
         }
         for ty in masks {
             result.extend(quote! {
+                #[cfg(feature = "bevy_pbr")]
                 const _: () =  {
                     impl #crate0::OpacityMaterialExtension<#ty> for #name {
                         fn apply_opacity(a: &mut #ty, b: &mut Self, opacity: f32) {

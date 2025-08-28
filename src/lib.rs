@@ -49,7 +49,6 @@ use bevy::{
         entity::EntityHashMap,
         system::{StaticSystemParam, SystemParam},
     },
-    pbr::{ExtendedMaterial, Material, MaterialExtension, MeshMaterial3d, StandardMaterial},
     prelude::ImageNode,
     prelude::{Children, Component, Entity, Query, Res, ResMut, Resource, SystemSet},
     sprite::{ColorMaterial, MeshMaterial2d, Sprite},
@@ -62,6 +61,11 @@ use std::marker::PhantomData;
 #[cfg(feature = "derive")]
 pub use bevy_mod_opacity_derive::Opacity;
 use impls::UiColorQuery;
+
+#[cfg(feature = "bevy_pbr")]
+mod pbr;
+#[cfg(feature = "bevy_pbr")]
+pub use pbr::*;
 
 /// [`Component`] of opacity of this entity and its children.
 #[derive(Debug, Clone, Copy, Component, PartialEq, PartialOrd)]
@@ -222,20 +226,6 @@ pub trait OpacityAsset: Asset {
     fn apply_opacity(&mut self, opacity: f32);
 }
 
-/// A [`MaterialExtension`] with an opacity value.
-pub trait OpacityMaterialExtension<A> {
-    fn apply_opacity(a: &mut A, b: &mut Self, opacity: f32);
-}
-
-impl<A: Material, T: MaterialExtension> OpacityAsset for ExtendedMaterial<A, T>
-where
-    T: OpacityMaterialExtension<A>,
-{
-    fn apply_opacity(&mut self, opacity: f32) {
-        OpacityMaterialExtension::apply_opacity(&mut self.base, &mut self.extension, opacity);
-    }
-}
-
 fn interpolate(
     mut commands: Commands,
     time: Res<Time<Virtual>>,
@@ -325,7 +315,8 @@ pub trait OpacityExtension {
     where
         &'static mut C: OpacityQuery;
     fn register_opacity_material2d<M: Material2d + OpacityAsset>(&mut self) -> &mut Self;
-    fn register_opacity_material3d<M: Material + OpacityAsset>(&mut self) -> &mut Self;
+    #[cfg(feature = "bevy_pbr")]
+    fn register_opacity_material3d<M: bevy::pbr::Material + OpacityAsset>(&mut self) -> &mut Self;
 }
 
 impl OpacityExtension for App {
@@ -347,8 +338,11 @@ impl OpacityExtension for App {
         self
     }
 
-    fn register_opacity_material3d<M: Material + OpacityAsset>(&mut self) -> &mut Self {
-        self.add_plugins(OpacityQueryPlugin::<&MeshMaterial3d<M>>(PhantomData));
+    #[cfg(feature = "bevy_pbr")]
+    fn register_opacity_material3d<M: bevy::pbr::Material + OpacityAsset>(&mut self) -> &mut Self {
+        self.add_plugins(OpacityQueryPlugin::<&bevy::pbr::MeshMaterial3d<M>>(
+            PhantomData,
+        ));
         self
     }
 }
@@ -374,7 +368,8 @@ impl Plugin for OpacityPlugin {
         app.register_opacity_component::<TextColor>();
         app.register_opacity_component::<ImageNode>();
         app.register_opacity_material2d::<ColorMaterial>();
-        app.register_opacity_material3d::<StandardMaterial>();
+        #[cfg(feature = "bevy_pbr")]
+        app.register_opacity_material3d::<bevy::pbr::StandardMaterial>();
         app.register_opacity::<UiColorQuery>();
     }
 }

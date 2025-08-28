@@ -2,17 +2,13 @@ use bevy::{
     asset::Assets,
     color::Alpha,
     ecs::{query::QueryData, system::SystemParam},
-    pbr::{
-        decal::ForwardDecalMaterialExt, wireframe::WireframeMaterial, Material, MeshMaterial3d,
-        StandardMaterial,
-    },
     prelude::{Component, ImageNode, ResMut},
     sprite::{ColorMaterial, Material2d, MeshMaterial2d, Sprite, Wireframe2dMaterial},
     text::TextColor,
     ui::{BackgroundColor, BorderColor},
 };
 
-use crate::{OpacityAsset, OpacityMaterialExtension, OpacityQuery};
+use crate::{OpacityAsset, OpacityQuery};
 
 impl OpacityQuery for &mut Sprite {
     type Cx = ();
@@ -87,18 +83,6 @@ impl OpacityAsset for ColorMaterial {
     }
 }
 
-impl OpacityAsset for StandardMaterial {
-    fn apply_opacity(&mut self, opacity: f32) {
-        self.base_color.set_alpha(opacity)
-    }
-}
-
-impl OpacityAsset for WireframeMaterial {
-    fn apply_opacity(&mut self, opacity: f32) {
-        self.color.set_alpha(opacity)
-    }
-}
-
 impl OpacityAsset for Wireframe2dMaterial {
     fn apply_opacity(&mut self, opacity: f32) {
         self.color.set_alpha(opacity)
@@ -119,28 +103,5 @@ where
         if let Some(mat) = cx.get_mut(this.id()) {
             mat.apply_opacity(opacity);
         }
-    }
-}
-
-impl<T> OpacityQuery for &MeshMaterial3d<T>
-where
-    T: OpacityAsset + Material,
-{
-    type Cx = ResMut<'static, Assets<T>>;
-
-    fn apply_opacity(
-        this: &mut Self::Item<'_>,
-        cx: &mut <Self::Cx as SystemParam>::Item<'_, '_>,
-        opacity: f32,
-    ) {
-        if let Some(mat) = cx.get_mut(this.id()) {
-            mat.apply_opacity(opacity);
-        }
-    }
-}
-
-impl<T: OpacityAsset> OpacityMaterialExtension<T> for ForwardDecalMaterialExt {
-    fn apply_opacity(a: &mut T, _: &mut Self, opacity: f32) {
-        a.apply_opacity(opacity);
     }
 }
