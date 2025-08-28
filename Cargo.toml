@@ -17,8 +17,9 @@ Hierarchical opacity for bevy.
 keywords = ["bevy", "opacity", "fading"]
 
 [features]
-default = ["derive"]
+default = ["derive", "serde"]
 derive = ["bevy_mod_opacity_derive"]
+serde = ["dep:serde"]
 
 [dependencies]
 bevy = { version = "0.16.0", default-features = false, features = [
@@ -28,7 +29,7 @@ bevy = { version = "0.16.0", default-features = false, features = [
     "bevy_sprite",
 ]}
 bevy_mod_opacity_derive = { version = "0.3", optional = true, path = "./derive" }
-serde = { version = "1.0.219", default-features = false }
+serde = { version = "1.0.219", default-features = false, optional = true }
 
 
 [dev-dependencies]

@@ -57,7 +57,6 @@ use bevy::{
     transform::systems::{propagate_parent_transforms, sync_simple_transforms},
 };
 pub use impls::UiOpacity;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::marker::PhantomData;
 
 #[cfg(feature = "derive")]
@@ -174,15 +173,21 @@ impl Default for Opacity {
     }
 }
 
-impl Serialize for Opacity {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.target.serialize(serializer)
-    }
-}
+#[cfg(feature = "serde")]
+mod serde {
+    use super::*;
+    use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-impl<'de> Deserialize<'de> for Opacity {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Ok(Opacity::new(f32::deserialize(deserializer)?))
+    impl Serialize for Opacity {
+        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            self.target.serialize(serializer)
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Opacity {
+        fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            Ok(Opacity::new(f32::deserialize(deserializer)?))
+        }
     }
 }
 
