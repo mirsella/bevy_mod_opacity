@@ -18,11 +18,10 @@ Additionally you can implement `OpacityQuery` or derive `Opacity` to make your o
 and materials work with this crate. Combining `OpacityQuery` with custom `QueryData` can
 add support for third party types.
 
-## `FadeIn` and `FadeOut`
+## Fade in and fade out
 
-These components adds a quick way to add and remove entities from your scenes smoothly.
-You should add a `FadeIn` during the `spawn` call and use `entity.insert(FadeOut)` instead
-of `entity.despawn_recursive()`
+Call functions like `Opacity::fade_in` and `Opacity::fade_out` to fade items in and out via tweening.
+`fade_out` can also be responsible for deleting the entity.
 
 ## FAQ
 

@@ -79,16 +79,24 @@ impl Opacity {
         *self = Self::new(opacity)
     }
 
+    /// Returns true if opacity is greater than or equal to `1.0`.
     pub const fn is_opaque(&self) -> bool {
         self.current >= 1.0
     }
 
+    /// Returns true if opacity is greater than to `0.0`.
     pub const fn is_visible(&self) -> bool {
         self.current > 0.0
     }
 
+    /// Returns true if opacity is less than or equal to `0.0`.
     pub const fn is_invisible(&self) -> bool {
         self.current <= 0.0
+    }
+
+    /// Returns true if is despawning, only when `fade_out` was called but not completed.
+    pub const fn is_despawning(&self) -> bool {
+        self.despawns
     }
 
     /// Set opacity to `0.0` and interpolate to `1.0`.
@@ -118,7 +126,8 @@ impl Opacity {
 
     /// Interpolate opacity to `0.0` and despawns the entity when that happens.
     ///
-    /// Deletion can be stopped by calling `set` or `fade_in`.
+    /// Deletion can be stopped by calling `set`, `fade_in` or `interpolate_to` before fade out completed. 
+    /// If deletion is not desired, call `interpolate_to` with opacity `0.0` instead.
     pub fn fade_out(&mut self, time: f32) {
         self.target = 0.0;
         self.despawns = true;
