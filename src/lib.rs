@@ -151,7 +151,6 @@ impl Default for Opacity {
 
 #[cfg(feature = "serde")]
 const _: () = {
-    use super::*;
     use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     impl Serialize for Opacity {
