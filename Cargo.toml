@@ -3,7 +3,7 @@ members = ["derive"]
 
 [package]
 name = "bevy_mod_opacity"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 authors = ["Mincong Lu <mintlux667@gmail.com>"]
@@ -17,19 +17,17 @@ Hierarchical opacity for bevy.
 keywords = ["bevy", "opacity", "fading"]
 
 [features]
-default = ["bevy_pbr", "derive", "serde"]
-bevy_pbr = ["bevy/bevy_pbr"]
+default = ["2d", "3d", "ui", "derive"]
+2d = ["bevy/bevy_sprite", "bevy/bevy_text"]
+3d = ["bevy/bevy_pbr"]
+ui = ["bevy/bevy_ui", "bevy/bevy_text"]
 derive = ["bevy_mod_opacity_derive"]
 serde = ["dep:serde"]
 
 [dependencies]
-bevy = { version = "0.16.0", default-features = false, features = [
-    "bevy_render", 
-    "bevy_ui",
-    "bevy_sprite",
-]}
+bevy = { version = "0.16.0", default-features = false, features = ["bevy_render", "bevy_asset"]}
 bevy_mod_opacity_derive = { version = "0.3", optional = true, path = "./derive" }
-serde = { version = "1.0.219", default-features = false, optional = true }
+serde = { version = "1", default-features = false, optional = true }
 
 
 [dev-dependencies]

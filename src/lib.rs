@@ -1,46 +1,17 @@
-//! Hierarchical opacity for bevy.
-//!
-//! # The [`struct@Opacity`] component
-//!
-//! When `Opacity` is inserted to an entity, the entity and all its descendants
-//! will be affected by the opacity value. Unlike bevy components like `Visibility`
-//! `Opacity` does not need to be put on every entity in the tree.
-//! Entities with no `Opacity` ancestor will not not affected by this crate.
-//!
-//! # Support for native types
-//!
-//! We innately support `2d`, `3d` and `ui`, this includes `Sprite`, `TextColor`, `StandardMaterial`,
-//! `ColorMaterial`, `Image`, `BackgroundColor` and `ForegroundColor`.
-//!
-//! Additionally you can implement [`OpacityQuery`] or derive `Opacity` to make your own types
-//! and materials work with this crate. Combining `OpacityQuery` with custom `QueryData` can
-//! add support for third party types.
-//!
-//! # [`FadeIn`] and [`FadeOut`]
-//!
-//! These components adds a quick way to add and remove entities from your scenes smoothly.
-//! You should add a [`FadeIn`] during the `spawn` call and use `entity.insert(FadeOut)` instead
-//! of `entity.despawn_recursive()`
-//!
-//! # FAQ
-//!
-//! * My 3d scene is not fading correctly
-//!
-//!  Ensure materials are duplicated and unique, since we write to the underlying material directly.
-//!  Also make sure `AlphaMode` is set to `Blend` if applicable.
+#![doc = include_str!("../README.md")]
 
 mod alpha;
-mod impls;
 #[doc(hidden)]
 pub use alpha::set_alpha;
 #[doc(hidden)]
 pub use bevy::asset::{Assets, Handle};
+#[allow(unused)]
+use bevy::color::Alpha;
 #[doc(hidden)]
 pub use bevy::ecs::query::QueryData;
 
 use bevy::ecs::schedule::{ApplyDeferred, IntoScheduleConfigs};
 use bevy::ecs::system::Commands;
-use bevy::sprite::Material2d;
 use bevy::time::{Time, Virtual};
 use bevy::{
     app::{App, Plugin, PostUpdate},
@@ -49,23 +20,24 @@ use bevy::{
         entity::EntityHashMap,
         system::{StaticSystemParam, SystemParam},
     },
-    prelude::ImageNode,
     prelude::{Children, Component, Entity, Query, Res, ResMut, Resource, SystemSet},
-    sprite::{ColorMaterial, MeshMaterial2d, Sprite},
-    text::TextColor,
     transform::systems::{propagate_parent_transforms, sync_simple_transforms},
 };
-pub use impls::UiOpacity;
 use std::marker::PhantomData;
 
 #[cfg(feature = "derive")]
 pub use bevy_mod_opacity_derive::Opacity;
-use impls::UiColorQuery;
 
-#[cfg(feature = "bevy_pbr")]
+#[cfg(feature = "3d")]
 mod pbr;
-#[cfg(feature = "bevy_pbr")]
-pub use pbr::*;
+#[cfg(feature = "2d")]
+mod sprite;
+#[cfg(feature = "ui")]
+mod ui;
+#[cfg(feature = "3d")]
+pub use pbr::OpacityMaterialExtension;
+#[cfg(feature = "ui")]
+pub use ui::UiOpacity;
 
 /// [`Component`] of opacity of this entity and its children.
 #[derive(Debug, Clone, Copy, Component, PartialEq, PartialOrd)]
@@ -178,7 +150,7 @@ impl Default for Opacity {
 }
 
 #[cfg(feature = "serde")]
-mod serde {
+const _: () = {
     use super::*;
     use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -193,7 +165,7 @@ mod serde {
             Ok(Opacity::new(f32::deserialize(deserializer)?))
         }
     }
-}
+};
 
 /// A map of entity to opacity, if not present, the entity does not have an opacity root node.
 /// This means the entity is out of the scope of this crate and should not be handled.
@@ -309,13 +281,15 @@ fn apply_opacity_query<Q: OpacityQuery>(
 /// Plugin for [`bevy_mod_opacity`](crate) that adds support for basic bevy types.
 pub struct OpacityPlugin;
 
+/// Extensions for [`App`].
 pub trait OpacityExtension {
     fn register_opacity<Q: OpacityQuery + 'static>(&mut self) -> &mut Self;
     fn register_opacity_component<C: Component>(&mut self) -> &mut Self
     where
         &'static mut C: OpacityQuery;
-    fn register_opacity_material2d<M: Material2d + OpacityAsset>(&mut self) -> &mut Self;
-    #[cfg(feature = "bevy_pbr")]
+    #[cfg(feature = "2d")]
+    fn register_opacity_material2d<M: bevy::sprite::Material2d + OpacityAsset>(&mut self) -> &mut Self;
+    #[cfg(feature = "3d")]
     fn register_opacity_material3d<M: bevy::pbr::Material + OpacityAsset>(&mut self) -> &mut Self;
 }
 
@@ -333,17 +307,27 @@ impl OpacityExtension for App {
         self
     }
 
-    fn register_opacity_material2d<M: Material2d + OpacityAsset>(&mut self) -> &mut Self {
-        self.add_plugins(OpacityQueryPlugin::<&MeshMaterial2d<M>>(PhantomData));
+    #[cfg(feature = "2d")]
+    fn register_opacity_material2d<M: bevy::sprite::Material2d + OpacityAsset>(&mut self) -> &mut Self {
+        self.add_plugins(OpacityQueryPlugin::<&bevy::sprite::MeshMaterial2d<M>>(PhantomData));
         self
     }
 
-    #[cfg(feature = "bevy_pbr")]
+    #[cfg(feature = "3d")]
     fn register_opacity_material3d<M: bevy::pbr::Material + OpacityAsset>(&mut self) -> &mut Self {
         self.add_plugins(OpacityQueryPlugin::<&bevy::pbr::MeshMaterial3d<M>>(
             PhantomData,
         ));
         self
+    }
+}
+
+#[cfg(any(feature = "2d", feature = "ui"))]
+impl OpacityQuery for &mut bevy::text::TextColor {
+    type Cx = ();
+
+    fn apply_opacity(this: &mut Self::Item<'_>, _: &mut (), opacity: f32) {
+        this.set_alpha(opacity);
     }
 }
 
@@ -364,12 +348,13 @@ impl Plugin for OpacityPlugin {
         app.add_systems(PostUpdate, interpolate.in_set(Fading));
         app.add_systems(PostUpdate, ApplyDeferred.in_set(PostFade));
         app.add_systems(PostUpdate, calculate_opacity.in_set(Calculate));
-        app.register_opacity_component::<Sprite>();
-        app.register_opacity_component::<TextColor>();
-        app.register_opacity_component::<ImageNode>();
-        app.register_opacity_material2d::<ColorMaterial>();
-        #[cfg(feature = "bevy_pbr")]
-        app.register_opacity_material3d::<bevy::pbr::StandardMaterial>();
-        app.register_opacity::<UiColorQuery>();
+        #[cfg(any(feature = "2d", feature = "ui"))]
+        app.register_opacity_component::<bevy::text::TextColor>();
+        #[cfg(feature = "2d")]
+        sprite::opacity_plugin_2d(app);
+        #[cfg(feature = "3d")]
+        pbr::opacity_plugin_3d(app);
+        #[cfg(feature = "ui")]
+        ui::opacity_plugin_ui(app);
     }
 }

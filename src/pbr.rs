@@ -7,7 +7,7 @@ use bevy::{
     prelude::*,
 };
 
-use crate::{OpacityAsset, OpacityQuery};
+use crate::{OpacityAsset, OpacityExtension, OpacityQuery};
 
 /// A [`MaterialExtension`] with an opacity value.
 pub trait OpacityMaterialExtension<A> {
@@ -56,4 +56,8 @@ where
             mat.apply_opacity(opacity);
         }
     }
+}
+
+pub fn opacity_plugin_3d(app: &mut App) {
+    app.register_opacity_material3d::<bevy::pbr::StandardMaterial>();
 }
