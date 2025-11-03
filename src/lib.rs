@@ -12,6 +12,7 @@ pub use bevy::ecs::query::QueryData;
 
 use bevy::ecs::schedule::{ApplyDeferred, IntoScheduleConfigs};
 use bevy::ecs::system::Commands;
+use bevy::reflect::Reflect;
 use bevy::time::{Time, Virtual};
 use bevy::{
     app::{App, Plugin, PostUpdate},
@@ -40,7 +41,7 @@ pub use pbr::OpacityMaterialExtension;
 pub use ui::UiOpacity;
 
 /// [`Component`] of opacity of this entity and its children.
-#[derive(Debug, Clone, Copy, Component, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, PartialOrd, Reflect)]
 pub struct Opacity {
     current: f32,
     target: f32,
@@ -126,7 +127,7 @@ impl Opacity {
 
     /// Interpolate opacity to `0.0` and despawns the entity when that happens.
     ///
-    /// Deletion can be stopped by calling `set`, `fade_in` or `interpolate_to` before fade out completed. 
+    /// Deletion can be stopped by calling `set`, `fade_in` or `interpolate_to` before fade out completed.
     /// If deletion is not desired, call `interpolate_to` with opacity `0.0` instead.
     pub fn fade_out(&mut self, time: f32) {
         self.target = 0.0;
@@ -296,7 +297,9 @@ pub trait OpacityExtension {
     where
         &'static mut C: OpacityQuery;
     #[cfg(feature = "2d")]
-    fn register_opacity_material2d<M: bevy::sprite::Material2d + OpacityAsset>(&mut self) -> &mut Self;
+    fn register_opacity_material2d<M: bevy::sprite::Material2d + OpacityAsset>(
+        &mut self,
+    ) -> &mut Self;
     #[cfg(feature = "3d")]
     fn register_opacity_material3d<M: bevy::pbr::Material + OpacityAsset>(&mut self) -> &mut Self;
 }
@@ -316,8 +319,12 @@ impl OpacityExtension for App {
     }
 
     #[cfg(feature = "2d")]
-    fn register_opacity_material2d<M: bevy::sprite::Material2d + OpacityAsset>(&mut self) -> &mut Self {
-        self.add_plugins(OpacityQueryPlugin::<&bevy::sprite::MeshMaterial2d<M>>(PhantomData));
+    fn register_opacity_material2d<M: bevy::sprite::Material2d + OpacityAsset>(
+        &mut self,
+    ) -> &mut Self {
+        self.add_plugins(OpacityQueryPlugin::<&bevy::sprite::MeshMaterial2d<M>>(
+            PhantomData,
+        ));
         self
     }
 
