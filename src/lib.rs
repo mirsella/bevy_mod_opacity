@@ -4,6 +4,8 @@ pub use bevy::asset::{Assets, Handle};
 use bevy::camera::visibility::VisibilitySystems;
 #[doc(hidden)]
 pub use bevy::color::Alpha;
+#[cfg(any(feature = "ui", feature = "2d"))]
+use bevy::ecs::change_detection::DetectChangesMut;
 use bevy::ecs::query::IterQueryData;
 #[doc(hidden)]
 pub use bevy::ecs::query::QueryData;
@@ -290,6 +292,10 @@ fn apply_opacity_query<Q: OpacityQuery>(
 }
 
 /// Plugin for [`bevy_mod_opacity`](crate) that adds support for basic bevy types.
+///
+/// Text fades apply to complete `Text`, `Text2d`, or `EditableText` blocks, including their effects.
+/// `Opacity` on a `TextSpan` does not fade that span independently; use its
+/// intrinsic `TextColor` alpha for span paint transparency.
 pub struct OpacityPlugin;
 
 /// Extensions for [`App`].
@@ -340,11 +346,16 @@ impl OpacityExtension for App {
 }
 
 #[cfg(any(feature = "2d", feature = "ui"))]
-impl OpacityQuery for &mut bevy::text::TextColor {
-    type Cx = ();
-
-    fn apply_opacity(this: &mut Self::Item<'_, '_>, _: &mut (), opacity: f32) {
-        this.set_alpha(opacity);
+fn apply_text_opacity(
+    map: Res<OpacityMap>,
+    mut query: Query<(Entity, &mut bevy::text::InheritedTextOpacity)>,
+) {
+    for (entity, mut opacity) in &mut query {
+        // Removing the last opacity ancestor restores identity without changing
+        // the independently authored/tweened TextOpacity on this entity.
+        opacity.set_if_neq(bevy::text::InheritedTextOpacity(
+            map.0.get(&entity).copied().unwrap_or(1.),
+        ));
     }
 }
 
@@ -365,12 +376,19 @@ impl Plugin for OpacityPlugin {
         app.add_systems(PostUpdate, ApplyDeferred.in_set(PostFade));
         app.add_systems(PostUpdate, calculate_opacity.in_set(Calculate));
         #[cfg(any(feature = "2d", feature = "ui"))]
-        app.register_opacity_component::<bevy::text::TextColor>();
+        app.add_systems(PostUpdate, apply_text_opacity.in_set(Apply));
         #[cfg(feature = "2d")]
-        sprite::opacity_plugin_2d(app);
+        {
+            app.register_required_components::<bevy::sprite::Text2d, bevy::text::InheritedTextOpacity>();
+            sprite::opacity_plugin_2d(app);
+        }
         #[cfg(feature = "3d")]
         pbr::opacity_plugin_3d(app);
         #[cfg(feature = "ui")]
-        ui::opacity_plugin_ui(app);
+        {
+            app.register_required_components::<bevy::ui::widget::Text, bevy::text::InheritedTextOpacity>();
+            app.register_required_components::<bevy::text::EditableText, bevy::text::InheritedTextOpacity>();
+            ui::opacity_plugin_ui(app);
+        }
     }
 }
